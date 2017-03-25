@@ -1,12 +1,14 @@
 package sqlite3schema
 
 import (
+	"bytes"
 	"database/sql"
 	"fmt"
 	"math"
 	"strings"
 
 	"github.com/gimpldo/ba-prototype-go/sqlschema"
+	"github.com/pkg/errors"
 )
 
 // ElementFound = SQLite database schema element found (after a search).
@@ -23,18 +25,23 @@ type ElementFound struct {
 }
 
 func ReadFromDB(db *sql.DB, namePrefix, nameSuffix string) ([]ElementFound, error) {
+	// Must be the same character as in the SQL 'ESCAPE' clause below:
+	const escapeCharForLike = '!'
+
 	var err error
-	err = checkSafeNameChars(namePrefix)
+
+	escPrefix, err := checkEscapeForLike(namePrefix, escapeCharForLike)
 	if err != nil {
-		panic(err)
+		return nil, errors.Wrapf(err, "Prefix not acceptable")
 	}
-	err = checkSafeNameChars(nameSuffix)
+	escSuffix, err := checkEscapeForLike(nameSuffix, escapeCharForLike)
 	if err != nil {
-		panic(err)
+		return nil, errors.Wrapf(err, "Suffix not acceptable")
 	}
+
 	rows, err := db.Query(
-		"SELECT type, rootpage, name, tbl_name, sql FROM sqlite_master WHERE name LIKE ?",
-		namePrefix+"%"+nameSuffix)
+		"SELECT type, rootpage, name, tbl_name, sql FROM sqlite_master WHERE name LIKE ? ESCAPE '!'",
+		escPrefix+"%"+escSuffix)
 	if err != nil {
 		return nil, err
 	}
@@ -136,24 +143,41 @@ func readSQLiteMasterRows(rows *sql.Rows) ([]ElementFound, error) {
 	return result, nil
 }
 
-// Note: Right now, uppercase letters are not accepted because this software
-// does not plan to use them in database schema element/object names,
-// and the official SQLite style (D. Richard Hipp's) does not use them.
+// checkEscapeForLike uses a very strict (whitelist) approach to validation.
+//
+// Right now, uppercase letters are not accepted because
+// there is no plan or need for this software to use uppercase
+// in database schema element/object names, and
+// the official SQLite style (D. Richard Hipp's) does not use them either.
 // It would be an easy change to allow uppercase, should the need appear.
-func checkSafeNameChars(nameFragment string) error {
+//
+func checkEscapeForLike(nameFragment string, escapeChar rune) (escaped string, err error) {
+	var buf bytes.Buffer
+
 	for i, ch := range nameFragment {
 		switch {
+		case ch == escapeChar: // must be first case
+			return "", fmt.Errorf("Name fragment contains the escape char (%x) at %d.", ch, i)
+			/*
+				If we wanted to escape it, it could have been done as follows:
+				buf.WriteRune(escapeChar) // first use: to escape (itself, here)
+				buf.WriteRune(escapeChar) // second use: to include it in the LIKE
+
+				But we don't need to support the escape char in names, and
+				it's not easy to handle reliably an arbitrary escape char that
+				could be one of the characters that we accept or reject below!
+			*/
 		case 'a' <= ch && ch <= 'z':
+			buf.WriteRune(ch)
 		case '0' <= ch && ch <= '9':
-		case ch == '_':
+			buf.WriteRune(ch)
+		case ch == '_': // Underscore would be misinterpreted as wildcard, escape it:
+			buf.WriteRune(escapeChar)
+			buf.WriteRune(ch)
 		default:
-			return fmt.Errorf("Name fragment is not safe: %x at %d.", ch, i)
+			return "", fmt.Errorf("Name fragment is not safe: %x at %d.", ch, i)
 		}
-		// Problem: case ch == '_' will be misinterpreted as wildcard.
-		// We want to have underscores in name fragments but
-		// underscore has special meaning in 'LIKE'.
-		// Not (yet) worth the trouble to quote the underscores with
-		// an 'ESCAPE' character specified in the query. TODO!
 	}
-	return nil
+
+	return buf.String(), nil
 }
