@@ -256,6 +256,23 @@ const tableCRecIns = `INSERT INTO {{.Prefix}}(
 // 'ordcont' stands for "Order-preserving Container";
 // the trailing '_cn' in field names stands for "Checked Number".
 //
+// If 'val_type_id' column's value is zero = id.NoID, then
+// the 'item_id' column contains the Object part of the triple
+// (corresponds to 'object_id' from 'crec_idobj' table).
+// The 'lang_tag' and 'string_val' columns could then be used to specify
+// a "c-link name" or "label" (this is an extension to RDF containers that
+// the 'ba' design included before deciding to follow RDF closely).
+//
+// If the 'val_type_id' column contains the special ID corresponding to
+// 'rdf:langString', the Object/value part is a Language-tagged String:
+// the value columns should have same names as in the 'crec_langstring' table
+// ('lang_tag' and 'string_val').
+// In this case, the 'item_id' column must contain zero (id.NoID).
+//
+// Otherwise, the row contains a Literal with Datatype:
+// 'val_type_id' corresponds to 'val_datatype_id' from 'crec_litdatatype'.
+// In this case, the 'item_id' column must contain zero (id.NoID).
+//
 // It's on "Level two" of using index-organized tables:
 // (1) Possible problem: row size has no specified limit ---
 //      contains string field which can be arbitrarily big
