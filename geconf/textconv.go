@@ -73,7 +73,8 @@ func indexNotPrintableASCII(s string) int {
 
 const entrySeparatorChar = ';'
 
-// Could be 'var BadChars', settable by the code using this package:
+// TODO-maybe: the const below could be 'var BadChars',
+// settable by the code using this package:
 const badChars = "\\'[]{}()"
 
 func (ce Entry) MarshalText() (text []byte, err error) {
