@@ -164,10 +164,14 @@ func rankByElementPrefixLength(confEntry *geconf.Entry) {
 	}
 }
 
-// Note: Right now, uppercase letters are not accepted because this software
-// does not plan to use them in database schema element/object names,
-// and the official SQLite style (D. Richard Hipp's) does not use them.
+// checkSafeNameChars uses a very strict (whitelist) approach to validation.
+//
+// Right now, uppercase letters are not accepted because
+// there is no plan or need for this software to use uppercase
+// in database schema element/object names, and
+// the official SQLite style (D. Richard Hipp's) does not use them either.
 // It would be an easy change to allow uppercase, should the need appear.
+//
 func checkSafeNameChars(nameFragment string) error {
 	for i, ch := range nameFragment {
 		switch {
