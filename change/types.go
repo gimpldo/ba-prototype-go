@@ -123,7 +123,10 @@ type Rec struct {
 
 	ChangeRecContextID id.IntID
 
-	EditOpID id.IntID
+	// Editing Operation ID: a kind of Correlation ID, local to a Changeset.
+	// The 'C' in 'CID' can be understood as "Correlation", or
+	// as "Changeset-scoped".
+	EditOpCID id.IntID
 
 	ValueTypeID id.IntID
 

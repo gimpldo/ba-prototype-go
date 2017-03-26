@@ -7,6 +7,10 @@ package cstoresqlite0
 // 'crec' stands for "Change Record"
 // 'cset' stands for "Change Set" (usually written as a single word: changeset)
 
+// 'edit_op_cid' = Editing Operation identifier, a kind of Correlation ID,
+// local to a Changeset.
+// The 'c' in '_cid' can be understood as "Correlation" or "Changeset-scoped".
+
 /*
 The SQL DDL and DML templates defined below are intended to be used
 with the standard Go package 'text/template'.
@@ -129,13 +133,13 @@ const tableCRecIDObjCre = `CREATE TABLE {{.Prefix}}crec_idobj (
   crec_type INTEGER NOT NULL,
   crec_flags INTEGER NOT NULL,
   crec_context_id INTEGER NOT NULL{{.ReferencesIDTable}},
-  edit_op_id INTEGER NOT NULL{{.ReferencesIDTable}},
+  edit_op_cid INTEGER NOT NULL{{.ReferencesIDTable}},
   PRIMARY KEY (cset_id, subject_id, prop_id, object_id)
 ) {{if .IndexOrganizedTableL1}} WITHOUT ROWID {{end}}
 `
 const tableCRecIDObjIns = `INSERT INTO {{.Prefix}}crec_idobj (
   cset_id, subject_id, pos_cn, old_pos_cn,
-  crec_type, crec_flags, crec_context_id, edit_op_id,
+  crec_type, crec_flags, crec_context_id, edit_op_cid,
   val_type_id, item_id,
   lang_tag, string_val
 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -185,13 +189,13 @@ const tableCRecLangStringCre = `CREATE TABLE {{.Prefix}}crec_langstring (
   crec_type INTEGER NOT NULL,
   crec_flags INTEGER NOT NULL,
   crec_context_id INTEGER NOT NULL{{.ReferencesIDTable}},
-  edit_op_id INTEGER NOT NULL{{.ReferencesIDTable}},
+  edit_op_cid INTEGER NOT NULL{{.ReferencesIDTable}},
   PRIMARY KEY (cset_id, subject_id, prop_id, lang_tag, string_val)
 ) {{if .IndexOrganizedTableL2}} WITHOUT ROWID {{end}}
 `
 const tableCRecLangStringIns = `INSERT INTO {{.Prefix}}crec_langstring (
   cset_id, subject_id, pos_cn, old_pos_cn,
-  crec_type, crec_flags, crec_context_id, edit_op_id,
+  crec_type, crec_flags, crec_context_id, edit_op_cid,
   val_type_id, item_id,
   lang_tag, string_val
 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -218,13 +222,13 @@ const tableCRecLitDatatypeCre = `CREATE TABLE {{.Prefix}}crec_litdatatype (
   crec_type INTEGER NOT NULL,
   crec_flags INTEGER NOT NULL,
   crec_context_id INTEGER NOT NULL{{.ReferencesIDTable}},
-  edit_op_id INTEGER NOT NULL{{.ReferencesIDTable}},
+  edit_op_cid INTEGER NOT NULL{{.ReferencesIDTable}},
   PRIMARY KEY (cset_id, subject_id, prop_id, val_datatype_id, string_val)
 ) {{if .IndexOrganizedTableL2}} WITHOUT ROWID {{end}}
 `
 const tableCRecLitDatatypeIns = `INSERT INTO {{.Prefix}}crec_litdatatype (
   cset_id, subject_id, pos_cn, old_pos_cn,
-  crec_type, crec_flags, crec_context_id, edit_op_id,
+  crec_type, crec_flags, crec_context_id, edit_op_cid,
   val_type_id, item_id,
   lang_tag, string_val
 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -247,7 +251,7 @@ const tableCRecCre = `CREATE TABLE {{.Prefix}} (
 `
 const tableCRecIns = `INSERT INTO {{.Prefix}}(
   cset_id, subject_id,
-  crec_type, crec_flags, crec_context_id, edit_op_id,
+  crec_type, crec_flags, crec_context_id, edit_op_cid,
   val_type_id, item_id,
   lang_tag, string_val
 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -291,7 +295,7 @@ const tableCRecOrdContCre = `CREATE TABLE {{.Prefix}}crec_ordcont (
   crec_type INTEGER NOT NULL,
   crec_flags INTEGER NOT NULL,
   crec_context_id INTEGER NOT NULL{{.ReferencesIDTable}},
-  edit_op_id INTEGER NOT NULL{{.ReferencesIDTable}},
+  edit_op_cid INTEGER NOT NULL{{.ReferencesIDTable}},
   val_type_id INTEGER NOT NULL{{.ReferencesIDTable}},
   item_id INTEGER NOT NULL{{.ReferencesIDTable}},
   lang_tag TEXT NOT NULL,
@@ -301,7 +305,7 @@ const tableCRecOrdContCre = `CREATE TABLE {{.Prefix}}crec_ordcont (
 `
 const tableCRecOrdContIns = `INSERT INTO {{.Prefix}}crec_ordcont (
   cset_id, subject_id, pos_cn, old_pos_cn,
-  crec_type, crec_flags, crec_context_id, edit_op_id,
+  crec_type, crec_flags, crec_context_id, edit_op_cid,
   val_type_id, item_id,
   lang_tag, string_val
 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -310,25 +314,25 @@ const tableCRecOrdContIns = `INSERT INTO {{.Prefix}}crec_ordcont (
 const viewAllCRecBN = "all_crec"
 const viewAllCRecCre = `CREATE VIEW {{.Prefix}}all_crec AS
     SELECT cset_id, subject_id, prop_id AS prop, 0 AS old_prop,
-      crec_type, crec_flags, crec_context_id, edit_op_id,
+      crec_type, crec_flags, crec_context_id, edit_op_cid,
       lang_tag, string_val
     FROM {{.Prefix}}crec_idobj
   UNION ALL
     SELECT cset_id, subject_id, prop_id AS prop, 0 AS old_prop,
 
-      crec_type, crec_flags, crec_context_id, edit_op_id,
+      crec_type, crec_flags, crec_context_id, edit_op_cid,
       lang_tag, string_val
     FROM {{.Prefix}}crec_langstring
   UNION ALL
     SELECT cset_id, subject_id, prop_id AS prop, 0 AS old_prop,
 
-      crec_type, crec_flags, crec_context_id, edit_op_id,
+      crec_type, crec_flags, crec_context_id, edit_op_cid,
       lang_tag, string_val
     FROM {{.Prefix}}crec_litdatatype
   UNION ALL
     SELECT cset_id, subject_id, pos_cn, old_pos_cn,
       val_type_id, item_id,
-      crec_type, crec_flags, crec_context_id, edit_op_id,
+      crec_type, crec_flags, crec_context_id, edit_op_cid,
       lang_tag, string_val
     FROM {{.Prefix}}crec_ordcont
 `
