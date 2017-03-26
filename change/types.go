@@ -124,8 +124,14 @@ type Rec struct {
 	ChangeRecContextID id.IntID
 
 	// Editing Operation ID: a kind of Correlation ID, local to a Changeset.
+	// We are using local references that are valid only inside a changeset.
+	// The values appearing in the 'edit_op_cid' column will be taken from
+	// a pool of unique IDs --- reusable in each changeset that contains
+	// editing operation metadata.
+	//
 	// The 'C' in 'CID' can be understood as "Correlation", or
 	// as "Changeset-scoped".
+	//
 	EditOpCID id.IntID
 
 	ValueTypeID id.IntID

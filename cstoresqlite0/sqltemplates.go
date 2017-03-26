@@ -8,7 +8,12 @@ package cstoresqlite0
 // 'cset' stands for "Change Set" (usually written as a single word: changeset)
 
 // 'edit_op_cid' = Editing Operation identifier, a kind of Correlation ID,
-// local to a Changeset.
+// local to a Changeset (i.e. references are valid only inside a changeset).
+//
+// The values appearing in the 'edit_op_cid' column will be taken from
+// a pool of unique IDs --- reusable in each changeset that contains
+// editing operation metadata.
+//
 // The 'c' in '_cid' can be understood as "Correlation" or "Changeset-scoped".
 
 /*
