@@ -345,7 +345,7 @@ func main() {
 				ConnectHook: func(conn *sqlite3.SQLiteConn) error {
 					err := conn.SetTrace(&sqlite3.TraceConfig{
 						Callback:         traceCallback,
-						EventMask:        uint32(eventMask),
+						EventMask:        eventMask,
 						WantExpandedSQL:  true,
 						WantSQLiteErrMsg: true,
 					})
