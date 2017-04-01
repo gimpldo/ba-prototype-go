@@ -44,6 +44,19 @@ valid syntax for the clause, including the desired ID table's name
     Example: " REFERENCES " followed by the ID table name
       (note the space before and after "REFERENCES")
 
+.ReferencesChangeSetIDTable: string
+
+Could be the empty string (no "REFERENCES" clause), or
+valid syntax for the clause, including the desired changeset ID table's name
+(which need not use same prefix as the other tables, but most likely will ---
+it makes little sense to have a different prefix for the main changeset table).
+    Example: " REFERENCES " followed by the changeset ID table name
+      (note the space before and after "REFERENCES")
+
+Using the same ID table for all IDs (including changeset IDs) is allowed:
+  templateData.ReferencesChangeSetIDTable = templateData.ReferencesIDTable
+is perfectly OK, even if a suboptimal use of database integrity checks.
+
 .IndexOrganizedTableL1: boolean
 
 If true, create Index-Organized Table (also known as "clustered index")
@@ -70,6 +83,9 @@ type sqlTemplateData struct {
 
 	IDTableName       string
 	ReferencesIDTable string
+
+	ReferToMainChangeSetTable  bool
+	ReferencesChangeSetIDTable string
 
 	IndexOrganizedTableL1 bool
 	IndexOrganizedTableL2 bool
@@ -101,14 +117,17 @@ const tableCStoreConfIns = `INSERT INTO {{.Prefix}}cstore_conf (
 ) VALUES (?, ?, ?)
 `
 
-// Main changeset table: one row for each changeset
+// The main changeset table: contains one row for each changeset
+//
+// Note that the primary key is *not* followed by 'ReferencesChangeSetIDTable'
+// because *this* table is intended to *be* the "ChangeSet ID Table"
+// (so it would refer to itself).
 //
 const tableCSetInfoBN = "cset_info"
 const tableCSetInfoCre = `CREATE TABLE {{.Prefix}}cset_info (
-  cset_id INTEGER NOT NULL{{.ReferencesIDTable}},
+  cset_id INTEGER PRIMARY KEY NOT NULL{{.ReferencesIDTable}},
   cset_todo_property TEXT NOT NULL,
-  cset_todo_value TEXT NOT NULL,
-  PRIMARY KEY (cset_id)
+  cset_todo_value TEXT NOT NULL
 )
 `
 const tableCSetInfoIns = `INSERT INTO {{.Prefix}}cset_info (
@@ -131,7 +150,7 @@ const tableCre = `CREATE TABLE {{.Prefix}} (
 //
 const tableCRecIDObjBN = "crec_idobj"
 const tableCRecIDObjCre = `CREATE TABLE {{.Prefix}}crec_idobj (
-  cset_id INTEGER NOT NULL{{.ReferencesIDTable}},
+  cset_id INTEGER NOT NULL{{.ReferencesChangeSetIDTable}},
   subject_id INTEGER NOT NULL{{.ReferencesIDTable}},
   prop_id INTEGER NOT NULL{{.ReferencesIDTable}},
   object_id INTEGER NOT NULL{{.ReferencesIDTable}},
@@ -186,7 +205,7 @@ const tableCRecIDObjIns = `INSERT INTO {{.Prefix}}crec_idobj (
 //
 const tableCRecLangStringBN = "crec_langstring"
 const tableCRecLangStringCre = `CREATE TABLE {{.Prefix}}crec_langstring (
-  cset_id INTEGER NOT NULL{{.ReferencesIDTable}},
+  cset_id INTEGER NOT NULL{{.ReferencesChangeSetIDTable}},
   subject_id INTEGER NOT NULL{{.ReferencesIDTable}},
   prop_id INTEGER NOT NULL{{.ReferencesIDTable}},
   lang_tag TEXT NOT NULL,
@@ -219,7 +238,7 @@ const tableCRecLangStringIns = `INSERT INTO {{.Prefix}}crec_langstring (
 //
 const tableCRecLitDatatypeBN = "crec_litdatatype"
 const tableCRecLitDatatypeCre = `CREATE TABLE {{.Prefix}}crec_litdatatype (
-  cset_id INTEGER NOT NULL{{.ReferencesIDTable}},
+  cset_id INTEGER NOT NULL{{.ReferencesChangeSetIDTable}},
   subject_id INTEGER NOT NULL{{.ReferencesIDTable}},
   prop_id INTEGER NOT NULL{{.ReferencesIDTable}},
   val_datatype_id INTEGER NOT NULL{{.ReferencesIDTable}},
@@ -241,7 +260,7 @@ const tableCRecLitDatatypeIns = `INSERT INTO {{.Prefix}}crec_litdatatype (
 
 const tableCRecBN = "crec_"
 const tableCRecCre = `CREATE TABLE {{.Prefix}} (
-  cset_id INTEGER NOT NULL{{.ReferencesIDTable}},
+  cset_id INTEGER NOT NULL{{.ReferencesChangeSetIDTable}},
   subject_id INTEGER NOT NULL{{.ReferencesIDTable}},
   prop_id INTEGER NOT NULL{{.ReferencesIDTable}},
   object_id INTEGER NOT NULL{{.ReferencesIDTable}},
@@ -293,7 +312,7 @@ const tableCRecIns = `INSERT INTO {{.Prefix}}(
 //
 const tableCRecOrdContBN = "crec_ordcont"
 const tableCRecOrdContCre = `CREATE TABLE {{.Prefix}}crec_ordcont (
-  cset_id INTEGER NOT NULL{{.ReferencesIDTable}},
+  cset_id INTEGER NOT NULL{{.ReferencesChangeSetIDTable}},
   subject_id INTEGER NOT NULL{{.ReferencesIDTable}},
   pos_cn INTEGER NOT NULL,
   old_pos_cn INTEGER NOT NULL,
@@ -315,6 +334,110 @@ const tableCRecOrdContIns = `INSERT INTO {{.Prefix}}crec_ordcont (
   lang_tag, string_val
 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
+
+// Table for change records for IDentified Literal nodes containing Text data.
+//
+// The goal is to have an ID corresponding to a potentially big text
+// so the "big literal" can be:
+//  - shared = referred by multiple triples (in the object position);
+//  - annotated, tagged (by triples having it in the subject position);
+//  - modified incrementally:
+//      a change record does *not* need to always specify the whole value ---
+//      can insert/append/prepend, remove, or replace *parts* of the literal.
+//
+// The node/thing identified by the value in the 'subject_id' column
+// is *not* necessarily specialized or restricted to "be" a "big literal":
+// the same ID may appear, even in same changeset, in the 'subject_id' column
+// of other tables with change records (for example, 'crec_ordcont' ---
+// our node may "be" simultaneously an Order-preserving Container).
+//
+// This is why it would be *misleading* to say that the goal is to
+// "provide an ID for a potentially big text": it would be too limiting.
+//
+// On the other hand, it would make little sense to use the same ID
+// for a big text and a big binary = to have for the *long* term
+// same 'subject_id' in both 'crec_id_lit_text' and 'crec_id_lit_bin' tables.
+// *Short-term* coexistence (example: moving/converting from one to the other)
+// seems useful; a changeset could contain records saying:
+//  - delete text literal and
+//  - insert equivalent data into a new binary literal using the same ID.
+//
+// Trying to prevent unexpected uses seems complicated and unnecessary.
+// There is no clear risk/problem that would require such restrictions.
+// TODO: document risks/problems related to this (if any).
+//
+const tableCRecIDLitTextBN = "crec_id_lit_text"
+const tableCRecIDLitTextCre = `CREATE TABLE {{.Prefix}}crec_id_lit_text (
+  cset_id INTEGER NOT NULL{{.ReferencesChangeSetIDTable}},
+  subject_id INTEGER NOT NULL{{.ReferencesIDTable}},
+  pos_cn INTEGER NOT NULL,
+  old_pos_cn INTEGER NOT NULL,
+  crec_type INTEGER NOT NULL,
+  crec_flags INTEGER NOT NULL,
+  crec_context_id INTEGER NOT NULL{{.ReferencesIDTable}},
+  edit_op_cid INTEGER NOT NULL{{.ReferencesIDTable}},
+  val_datatype_id INTEGER NOT NULL{{.ReferencesIDTable}},
+  lang_tag TEXT NOT NULL,
+  string_val TEXT NOT NULL,
+  PRIMARY KEY (cset_id, subject_id, pos_cn)
+)
+`
+const tableCRecIDLitTextIns = `INSERT INTO {{.Prefix}}crec_id_lit_text (
+  cset_id, subject_id, pos_cn, old_pos_cn,
+  crec_type, crec_flags, crec_context_id, edit_op_cid,
+  val_type_id, item_id,
+  lang_tag, string_val
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+`
+
+// Table for change records for IDentified Literal nodes containing Binary data.
+//
+// The goal is to have an ID corresponding to a potentially big binary
+// so the "big literal" can be:
+//  - shared = referred by multiple triples (in the object position);
+//  - annotated, tagged (by triples having it in the subject position);
+//  - modified incrementally:
+//      a change record does *not* need to always specify the whole value ---
+//      can insert/append/prepend, remove, or replace *parts* of the literal.
+//
+// The node/thing identified by the value in the 'subject_id' column
+// is *not* necessarily specialized or restricted to "be" a "big literal":
+// the same ID may appear, even in same changeset, in the 'subject_id' column
+// of other tables with change records (for example, 'crec_ordcont' ---
+// our node may "be" simultaneously an Order-preserving Container).
+//
+// This is why it would be *misleading* to say that the goal is to
+// "provide an ID for a potentially big binary": it would be too limiting.
+//
+// On the other hand, it would make little sense to use the same ID
+// for a big text and a big binary = to have for the *long* term
+// same 'subject_id' in both 'crec_id_lit_text' and 'crec_id_lit_bin' tables.
+// *Short-term* coexistence (example: moving/converting from one to the other)
+// seems useful; a changeset could contain records saying:
+//  - delete text literal and
+//  - insert equivalent data into a new binary literal using the same ID.
+//
+// Trying to prevent unexpected uses seems complicated and unnecessary.
+// There is no clear risk/problem that would require such restrictions.
+// TODO: document risks/problems related to this (if any).
+//
+const tableCRecIDLitBinBN = "crec_id_lit_bin"
+const tableCRecIDLitBinCre = `CREATE TABLE {{.Prefix}}crec_id_lit_bin (
+  cset_id INTEGER NOT NULL{{.ReferencesChangeSetIDTable}},
+  subject_id INTEGER NOT NULL{{.ReferencesIDTable}},
+  pos_cn INTEGER NOT NULL,
+
+  crec_type INTEGER NOT NULL,
+  crec_flags INTEGER NOT NULL,
+  crec_context_id INTEGER NOT NULL{{.ReferencesIDTable}},
+  edit_op_cid INTEGER NOT NULL{{.ReferencesIDTable}},
+
+  bin_val BLOB NOT NULL,
+  PRIMARY KEY (cset_id, subject_id, pos_cn)
+)
+`
+
+// TODO: crec_id_lit_bin
 
 const viewAllCRecBN = "all_crec"
 const viewAllCRecCre = `CREATE VIEW {{.Prefix}}all_crec AS

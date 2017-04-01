@@ -40,6 +40,7 @@ const (
 	tableCRecLangStringEI
 	tableCRecLitDatatypeEI
 	tableCRecOrdContEI
+	tableCRecIDLitTextEI
 	viewAllCRecEI
 	nElements // must be last ConstSpec in the const block
 )
@@ -49,7 +50,7 @@ const (
 // (1) the Element Index for the last table (adding one to it), or
 // (2) the constant immediately after the last table (first view element),
 //      in this case without '+ 1'.
-const nTables = tableCRecOrdContEI + 1
+const nTables = tableCRecIDLitTextEI + 1
 
 var elementTemplates = [nElements]sqlschema.ElementTemplate{
 	tableCStoreConfEI: {ElemType: sqlschema.TableElem,
@@ -76,6 +77,10 @@ var elementTemplates = [nElements]sqlschema.ElementTemplate{
 		BaseName:  tableCRecOrdContBN,
 		CreateSQL: tableCRecOrdContCre,
 	},
+	tableCRecIDLitTextEI: {ElemType: sqlschema.TableElem,
+		BaseName:  tableCRecIDLitTextBN,
+		CreateSQL: tableCRecIDLitTextCre,
+	},
 	viewAllCRecEI: {ElemType: sqlschema.ViewElem,
 		BaseName:  viewAllCRecBN,
 		CreateSQL: viewAllCRecCre,
@@ -89,4 +94,5 @@ var insertSQLTemplates = [nTables]string{
 	tableCRecLangStringEI:  tableCRecLangStringIns,
 	tableCRecLitDatatypeEI: tableCRecLitDatatypeIns,
 	tableCRecOrdContEI:     tableCRecOrdContIns,
+	tableCRecIDLitTextEI:   tableCRecIDLitTextIns,
 }

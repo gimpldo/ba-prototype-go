@@ -40,6 +40,21 @@ func generateDefsForAllElements(
 			data.ReferencesIDTable = " REFERENCES " + data.IDTableName
 		}
 
+		if data.ReferToMainChangeSetTable {
+			// Unlike the general ID table (for all IDs),
+			// the main changeset table is automatically determined
+			// (not configurable) and uses same prefix as the other tables.
+			//
+			// Other implementations could allow more configurability
+			// but there is no compelling reason to support it now.
+			//
+			csetTableName := prefix + templates[tableCSetInfoEI].BaseName
+
+			data.ReferencesChangeSetIDTable = " REFERENCES " + csetTableName
+		} else {
+			data.ReferencesChangeSetIDTable = data.ReferencesIDTable
+		}
+
 		data.Prefix = prefix
 
 		generated[i].CreateSQL = generateSQL(templates[i].CreateSQL, data)
@@ -96,6 +111,8 @@ func setSQLTemplateDataVal(dest *sqlTemplateData, confEntry geconf.Entry) {
 	switch confEntry.ConfProperty {
 	case "IDTable":
 		dest.IDTableName = confEntry.ConfValue
+	case "RefCSet":
+		dest.ReferToMainChangeSetTable = getConfBool(confEntry.ConfValue, false)
 	case "IOTL1":
 		dest.IndexOrganizedTableL1 = getConfBool(confEntry.ConfValue, false)
 	case "IOTL2":
