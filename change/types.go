@@ -4,20 +4,21 @@ import (
 	"github.com/gimpldo/ba-prototype-go/id"
 )
 
-// RecForm = change Record Form / Format; it's about type of content,
-// not about the kind of change (operation: add, delete, modify, etc.)
-type RecForm uint16
+// RecFormCode = change Record Form / Format Code; it's about
+// the type (structure) of the content,
+// not the kind of change (operation: add, delete, etc.)
+type RecFormCode uint16
 
 const (
 	// UsualTriple means typical RDF triple,
 	// not part of an order-preserving container:
-	UsualTriple RecForm = 0
+	UsualTriple RecFormCode = 0
 
 	// OrdContItem means Item from an Order-preserving Container:
-	OrdContItem = 8
+	OrdContItem RecFormCode = 8
 )
 
-// RecType = change Record Type.
+// RecTypeCode = change Record Type Code.
 // Usually represents one editing operation: add, delete, modify, etc.
 // The name emphasizes 'Record' type (it's not simply a 'Change' type) because
 // (1) some records might not specify a change (operation), but
@@ -33,12 +34,12 @@ const (
 // It is not a goal to provide unambiguous identification of
 // logical / high-level editing intentions in all cases.
 //
-type RecType uint16
+type RecTypeCode uint16
 
 // The trailing 'RT' in constant names stands for "Record Type".
 const (
-	AddRT RecType = 0
-	DelRT         = 1
+	AddRT RecTypeCode = 0
+	DelRT             = 1
 
 	ModifyRT // or have it only for order-preserving container items? see below!
 
@@ -117,8 +118,8 @@ const (
 
 // Rec = change Record
 type Rec struct {
-	Form           RecForm
-	ChangeRecType  RecType
+	Form           RecFormCode
+	ChangeRecType  RecTypeCode
 	ChangeRecFlags uint32
 
 	ChangeRecContextID id.IntID
