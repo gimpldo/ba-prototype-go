@@ -370,8 +370,8 @@ const tableCRecIDLitTextBN = "crec_id_lit_text"
 const tableCRecIDLitTextCre = `CREATE TABLE {{.Prefix}}crec_id_lit_text (
   cset_id INTEGER NOT NULL{{.ReferencesChangeSetIDTable}},
   subject_id INTEGER NOT NULL{{.ReferencesIDTable}},
-  pos_cn INTEGER NOT NULL,
-  old_pos_cn INTEGER NOT NULL,
+  offset_cn INTEGER NOT NULL,
+  MAYBE_old_offset_cn INTEGER NOT NULL,
   crec_type INTEGER NOT NULL,
   crec_flags INTEGER NOT NULL,
   crec_context_id INTEGER NOT NULL{{.ReferencesIDTable}},
@@ -379,11 +379,11 @@ const tableCRecIDLitTextCre = `CREATE TABLE {{.Prefix}}crec_id_lit_text (
   val_datatype_id INTEGER NOT NULL{{.ReferencesIDTable}},
   lang_tag TEXT NOT NULL,
   string_val TEXT NOT NULL,
-  PRIMARY KEY (cset_id, subject_id, pos_cn)
+  PRIMARY KEY (cset_id, subject_id, offset_cn)
 )
 `
 const tableCRecIDLitTextIns = `INSERT INTO {{.Prefix}}crec_id_lit_text (
-  cset_id, subject_id, pos_cn, old_pos_cn,
+  cset_id, subject_id, offset_cn, MAYBE_old_offset_cn,
   crec_type, crec_flags, crec_context_id, edit_op_cid,
   val_type_id, item_id,
   lang_tag, string_val
@@ -425,7 +425,7 @@ const tableCRecIDLitBinBN = "crec_id_lit_bin"
 const tableCRecIDLitBinCre = `CREATE TABLE {{.Prefix}}crec_id_lit_bin (
   cset_id INTEGER NOT NULL{{.ReferencesChangeSetIDTable}},
   subject_id INTEGER NOT NULL{{.ReferencesIDTable}},
-  pos_cn INTEGER NOT NULL,
+  offset_cn INTEGER NOT NULL,
 
   crec_type INTEGER NOT NULL,
   crec_flags INTEGER NOT NULL,
@@ -433,7 +433,7 @@ const tableCRecIDLitBinCre = `CREATE TABLE {{.Prefix}}crec_id_lit_bin (
   edit_op_cid INTEGER NOT NULL{{.ReferencesIDTable}},
 
   bin_val BLOB NOT NULL,
-  PRIMARY KEY (cset_id, subject_id, pos_cn)
+  PRIMARY KEY (cset_id, subject_id, offset_cn)
 )
 `
 
